@@ -1,9 +1,34 @@
+import re
 import time
+import logging
+
+logging.basicConfig(filename='data/intrusion_detection.log', level=logging.INFO)
 
 # Función para detectar intrusiones
-def detectar_intrusiones():
-    # Implementa la lógica para detectar intrusiones
-    print("Detectando intrusiones...")
+def detectar_intrusion(evento_log):
+    # Define patrones de eventos sospechosos
+    patrones_sospechosos = [
+        r".*(Failed login attempt).*",
+        r".*(Unauthorized access detected).*",
+        r".*(Potential security breach).*"
+    ]
+
+    for patron in patrones_sospechosos:
+        if re.match(patron, evento_log):
+            return True
+
+    return False
+
+# Función para monitorear eventos de registro
+def monitorear_eventos():
+    while True:
+        evento_log = input("Ingrese el evento de registro: ")
+        
+        if detectar_intrusion(evento_log):
+            logging.info(f"Posible intrusión detectada: {evento_log}")
+            print("Se ha detectado una posible intrusión.")
+        else:
+            print("No se ha detectado ninguna intrusión.")
 
 # Función para escanear vulnerabilidades
 def escanear_vulnerabilidades():
@@ -39,6 +64,7 @@ def main():
 
         if opcion == "1":
             detectar_intrusiones()
+            monitorear_eventos()
         elif opcion == "2":
             escanear_vulnerabilidades()
         elif opcion == "3":
