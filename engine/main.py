@@ -1,82 +1,50 @@
-import re
+import psutil
+import csv
 import time
-import logging
 
-logging.basicConfig(filename='data/intrusion_detection.log', level=logging.INFO)
+# Función para obtener el tráfico de red para cada proceso
+def obtener_trafico_de_red():
+    conexiones = psutil.net_connections(kind='inet')
+    trafico_por_proceso = {}
 
-# Función para detectar intrusiones
-def detectar_intrusion(evento_log):
-    # Define patrones de eventos sospechosos
-    patrones_sospechosos = [
-        r".*(Failed login attempt).*",
-        r".*(Unauthorized access detected).*",
-        r".*(Potential security breach).*"
-    ]
+    for conexion in conexiones:
+        pid = conexion.pid
+        if pid is not None:
+            proceso = psutil.Process(pid)
+            nombre_proceso = proceso.name()
+            if nombre_proceso in trafico_por_proceso:
+                trafico = trafico_por_proceso[nombre_proceso]
+            else:
+                trafico = {'Enviado (bytes)': 0, 'Recibido (bytes)': 0}
 
-    for patron in patrones_sospechosos:
-        if re.match(patron, evento_log):
-            return True
+            trafico['Enviado (bytes)'] += conexion.sent
+            trafico['Recibido (bytes)'] += conexion.recv
+            trafico_por_proceso[nombre_proceso] = trafico
 
-    return False
+    return trafico_por_proceso
 
-# Función para monitorear eventos de registro
-def monitorear_eventos():
-    while True:
-        evento_log = input("Ingrese el evento de registro: ")
-        
-        if detectar_intrusion(evento_log):
-            logging.info(f"Posible intrusión detectada: {evento_log}")
-            print("Se ha detectado una posible intrusión.")
-        else:
-            print("No se ha detectado ninguna intrusión.")
+# Función para guardar los datos en un archivo CSV
+def guardar_en_csv(trafico_por_proceso, ruta_csv):
+    with open(ruta_csv, mode='w', newline='') as archivo_csv:
+        campos = ['Proceso', 'Enviado (bytes)', 'Recibido (bytes)']
+        escritor_csv = csv.DictWriter(archivo_csv, fieldnames=campos)
+        escritor_csv.writeheader()
 
-# Función para escanear vulnerabilidades
-def escanear_vulnerabilidades():
-    # Implementa el escaneo de vulnerabilidades en la red
-    print("Escaneando vulnerabilidades...")
-
-# Función para monitorear el tráfico de red
-def monitorear_trafico():
-    # Implementa la lógica para supervisar el tráfico de red
-    print("Monitoreando el tráfico de red...")
-
-# Función para gestionar el firewall
-def gestionar_firewall():
-    # Implementa la gestión de reglas de firewall
-    print("Gestionando el firewall...")
-
-# Función para registrar eventos de seguridad
-def registrar_eventos():
-    # Implementa la lógica para registrar eventos de seguridad
-    print("Registrando eventos de seguridad...")
-
-# Función principal
-def main():
-    while True:
-        print("\nSistema de Monitoreo de Seguridad de Red")
-        print("1. Detectar Intrusiones")
-        print("2. Escanear Vulnerabilidades")
-        print("3. Monitorear Tráfico de Red")
-        print("4. Gestionar Firewall")
-        print("5. Registrar Eventos de Seguridad")
-        print("6. Salir")
-        opcion = input("Seleccione una opción: ")
-
-        if opcion == "1":
-            detectar_intrusiones()
-            monitorear_eventos()
-        elif opcion == "2":
-            escanear_vulnerabilidades()
-        elif opcion == "3":
-            monitorear_trafico()
-        elif opcion == "4":
-            gestionar_firewall()
-        elif opcion == "5":
-            registrar_eventos()
-        elif opcion == "6":
-            break
-        else:
-            print("Opción no válida. Intente de nuevo.")
+        for proceso, trafico in trafico_por_proceso.items():
+            escritor_csv.writerow({
+                'Proceso': proceso,
+                'Enviado (bytes)': trafico['Enviado (bytes)'],
+                'Recibido (bytes)': trafico['Recibido (bytes)']
+            })
 
 if __name__ == "__main__":
-    main()
+    ruta_csv = 'trafico_de_red.csv'
+
+    try:
+        while True:
+            trafico_por_proceso = obtener_trafico_de_red()
+            guardar_en_csv(trafico_por_proceso, ruta_csv)
+            print("Datos guardados en", ruta_csv)
+            time.sleep(5)  # Intervalo de tiempo entre mediciones (5 segundos)
+    except KeyboardInterrupt:
+        print("Monitoreo de red finalizado.")
